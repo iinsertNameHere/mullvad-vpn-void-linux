@@ -7,7 +7,7 @@ This repository provides template files, binaries, and installation instructions
 ### Method 1: Adding this Repository to xbps
 The easiest way is by adding this repository, which includes pre-built binaries. You can do so by creating a new file and specifying the repository URL.
 ```bash
-echo "repository=https://gitlab.com/LightSrc/mullvad-vpn-void-linux/-/raw/repository-x86_64-glibc" | sudo tee /etc/xbps.d/mullvadvpn-void.conf
+echo "repository=https://github.com/iinsertNameHere/mullvad-vpn-void-linux/-/raw/repository-x86_64-glibc" | sudo tee /etc/xbps.d/mullvadvpn-void.conf
 ```
 Once you've created file above, proceed with installing Mullvad VPN using xbps
 ```bash
