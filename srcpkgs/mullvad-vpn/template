@@ -1,0 +1,29 @@
+# Template file for 'mullvad-vpn'
+pkgname=mullvad-vpn
+version=2025.4
+revision=1
+only_for_archs="x86_64"
+short_desc="VPN client software for the Mullvad VPN service"
+hostmakedepends="tar xz"
+license="GPL-3.0"
+homepage="https://github.com/mullvad/mullvadvpn-app"
+distfiles="https://github.com/mullvad/mullvadvpn-app/releases/download/${version}/MullvadVPN-${version}_amd64.deb"
+checksum=99c09c2309ad34cba03f018608dcba190436179e63de7f1eb95492e9427e72a9
+nostrip=yes
+
+do_extract() {
+    mkdir -p ${DESTDIR}
+    ar x ${XBPS_SRCDISTDIR}/${pkgname}-${version}/MullvadVPN-${version}_amd64.deb
+}
+
+do_install() {
+    tar xf data.tar.xz -C ${DESTDIR}
+
+    # Remove /usr/local
+    rm -rf ${DESTDIR}/usr/local
+
+    # Remove systemd services
+    rm -rf ${DESTDIR}/usr/lib
+
+    vsv mullvad-daemon
+}

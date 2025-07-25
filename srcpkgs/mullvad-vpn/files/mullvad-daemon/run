@@ -1,0 +1,10 @@
+#!/bin/sh
+exec 2>&1
+
+# Check dependencies before starting the service
+sv check dbus >/dev/null || exit 1
+sv check NetworkManager >/dev/null || exit 1
+
+export MULLVAD_RESOURCE_DIR="/opt/Mullvad VPN/resources/"
+
+exec /usr/bin/mullvad-daemon -v --disable-stdout-timestamps 2>&1

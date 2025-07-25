@@ -1,0 +1,22 @@
+# INSTALL
+case "$ACTION" in
+pre)
+    if [ "$UPDATE" = "no" ]; then
+       pkill -x "mullvad-gui" || true
+
+       rm -f /var/cache/mullvad-vpn/relays.json
+       rm -f /var/cache/mullvad-vpn/api-ip-address.txt
+    fi
+    ;;
+post)
+    if [ "$UPDATE" = "no" ]; then
+        ln -s /etc/sv/mullvad-daemon /var/service/
+        sv up mullvad-daemon
+        if [ -x "$(command -v apparmor_parser)" ]; then
+           echo "Creating apparmor profile"
+           cp /opt/Mullvad\ VPN/resources/apparmor_mullvad /etc/apparmor.d/mullvad
+           apparmor_parser -r /etc/apparmor.d/mullvad || echo "Failed to reload apparmor profile"
+        fi
+    fi
+    ;;
+esac
