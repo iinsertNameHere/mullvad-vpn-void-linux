@@ -1,4 +1,5 @@
 name: Build and Publish XBPS Repository
+
 permissions:
   contents: read
   pages: write
@@ -26,39 +27,37 @@ jobs:
       - name: Install dependencies
         run: |
           xbps-install -Syu xbps
-          xbps-install -Sy git openssl curl
+          xbps-install -Sy git openssl curl sudo
+
+      - name: Create build user
+        run: |
+          useradd -m builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
 
       - name: Clone void-packages
         run: |
-          git clone --depth=1 https://github.com/void-linux/void-packages.git
+          su builder -c '
+            cd "$GITHUB_WORKSPACE"
 
-          echo "Checking clone..."
-          ls -la void-packages
+            git clone --depth=1 https://github.com/void-linux/void-packages.git
 
-          test -f void-packages/xbps-src
+            test -f void-packages/xbps-src
+          '
 
       - name: Add template
         run: |
-          cp -r srcpkgs/mullvad-vpn void-packages/srcpkgs/
+          su builder -c '
+            cp -r srcpkgs/mullvad-vpn void-packages/srcpkgs/
+          '
 
-      - name: Debug workspace
+      - name: Bootstrap and build package
         run: |
-          pwd
-          ls -la
-          ls -la void-packages
-          find void-packages -maxdepth 1 -type f
+          su builder -c '
+            cd void-packages
 
-      - name: Bootstrap xbps-src
-        working-directory: void-packages
-        run: |
-          cd void-packages
-          ls -l xbps-src
-          ./xbps-src binary-bootstrap
-
-      - name: Build package
-        working-directory: void-packages
-        run: |
-          ./xbps-src pkg mullvad-vpn
+            ./xbps-src binary-bootstrap
+            ./xbps-src pkg mullvad-vpn
+          '
 
       - name: Create repository
         run: |
@@ -101,7 +100,8 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: repo/
-  
+
+
   deploy:
     needs: build
 
