@@ -85,6 +85,13 @@ jobs:
           echo "XBPS_ALLOW_RESTRICTED=yes" >> etc/conf
 
 
+      - name: Configure xbps-src
+        run: |
+          cd void-packages
+
+          echo "XBPS_ALLOW_RESTRICTED=yes" >> etc/conf
+          echo "XBPS_CHROOT_CMD=ethereal" >> etc/conf
+
       - name: Bootstrap and build package
         run: |
           newgrp xbuilder <<EOF
