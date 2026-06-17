@@ -51,6 +51,8 @@ jobs:
       - name: Bootstrap xbps-src
         working-directory: void-packages
         run: |
+          cd void-packages
+          ls -l xbps-src
           ./xbps-src binary-bootstrap
 
       - name: Build package
