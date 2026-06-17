@@ -1,0 +1,107 @@
+name: Build and Publish XBPS Repository
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    container:
+      image: voidlinux/void-glibc-full
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          xbps-install -Syu xbps
+          xbps-install -Sy git openssl curl
+
+      - name: Clone void-packages
+        run: |
+          git clone --depth=1 https://github.com/void-linux/void-packages.git
+
+      - name: Add template
+        run: |
+          cp -r srcpkgs/mullvad-vpn void-packages/srcpkgs/
+
+      - name: Bootstrap xbps-src
+        working-directory: void-packages
+        run: |
+          ./xbps-src binary-bootstrap
+
+      - name: Build package
+        working-directory: void-packages
+        run: |
+          ./xbps-src pkg mullvad-vpn
+
+      - name: Create repository
+        run: |
+          mkdir -p repo
+
+          find void-packages/hostdir/binpkgs \
+            -name "*.xbps" \
+            -exec cp {} repo/ \;
+
+          touch repo/.nojekyll
+
+          xbps-rindex -a repo/*.xbps
+
+      - name: Sign repository
+        env:
+          XBPS_PRIVATE_KEY: ${{ secrets.XBPS_PRIVATE_KEY }}
+        run: |
+          echo "$XBPS_PRIVATE_KEY" > private.pem
+
+          xbps-rindex \
+            --privkey private.pem \
+            --sign \
+            --signedby "iinsert <iinsertt@proton.me>" \
+            repo/
+
+      - name: Sign packages
+        env:
+          XBPS_PRIVATE_KEY: ${{ secrets.XBPS_PRIVATE_KEY }}
+        run: |
+          echo "$XBPS_PRIVATE_KEY" > private.pem
+
+          xbps-rindex \
+            --privkey private.pem \
+            --sign-pkg \
+            repo/*.xbps
+
+          rm -f private.pem
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: repo/
+  
+  deploy:
+    needs: build
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
