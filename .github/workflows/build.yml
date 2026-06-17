@@ -1,10 +1,5 @@
 name: Build and Publish XBPS Repository
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 on:
   push:
     branches:
@@ -13,53 +8,89 @@ on:
       - "v*"
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+
 jobs:
   build:
-    runs-on: ubuntu-latest
 
-    container:
-      image: ghcr.io/void-linux/void-glibc-full:latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+
+      - name: Install build dependencies
         run: |
-          xbps-install -Syu xbps
-          xbps-install -Sy git openssl curl sudo bash
+          sudo apt update
+          sudo apt install -y \
+            git \
+            curl \
+            xz-utils \
+            bash
+
+
+      - name: Install static XBPS
+        run: |
+          curl -L \
+            https://repo-default.voidlinux.org/static/xbps-static-latest.x86_64-musl.tar.xz \
+            -o xbps-static.tar.xz
+
+          mkdir -p "$HOME/xbps"
+
+          tar xf xbps-static.tar.xz \
+            -C "$HOME/xbps"
+
+          echo "$HOME/xbps/usr/bin" >> "$GITHUB_PATH"
+
 
       - name: Create build user
         run: |
-          useradd -m -s /bin/bash builder
-          chown -R builder:builder "$GITHUB_WORKSPACE"
+          sudo useradd \
+            -m \
+            -s /bin/bash \
+            builder
+
+          sudo chown -R builder:builder "$GITHUB_WORKSPACE"
+
 
       - name: Clone void-packages
         run: |
-          su builder -c '
-            cd "$GITHUB_WORKSPACE"
+          sudo -u builder bash <<EOF
+          cd "$GITHUB_WORKSPACE"
 
-            git clone --depth=1 https://github.com/void-linux/void-packages.git
+          git clone --depth=1 \
+            https://github.com/void-linux/void-packages.git
 
-            test -f void-packages/xbps-src
-          '
+          test -f void-packages/xbps-src
+          EOF
 
-      - name: Add template
+
+      - name: Add package template
         run: |
-          su builder -c '
-            cp -r srcpkgs/mullvad-vpn void-packages/srcpkgs/
-          '
+          sudo -u builder bash <<EOF
+          cp -r \
+            srcpkgs/mullvad-vpn \
+            void-packages/srcpkgs/
+          EOF
+
 
       - name: Bootstrap and build package
         run: |
-          su builder -c '
-            cd void-packages
+          sudo -u builder bash <<EOF
+          cd void-packages
 
-            ./xbps-src binary-bootstrap
-            ./xbps-src pkg mullvad-vpn
-          '
+          ./xbps-src binary-bootstrap
 
-      - name: Create repository
+          ./xbps-src pkg mullvad-vpn
+          EOF
+
+
+      - name: Create XBPS repository
         run: |
           mkdir -p repo
 
@@ -69,11 +100,15 @@ jobs:
 
           touch repo/.nojekyll
 
-          xbps-rindex -a repo/*.xbps
+          xbps-rindex \
+            -a \
+            repo/*.xbps
+
 
       - name: Sign repository
         env:
           XBPS_PRIVATE_KEY: ${{ secrets.XBPS_PRIVATE_KEY }}
+
         run: |
           echo "$XBPS_PRIVATE_KEY" > private.pem
 
@@ -83,9 +118,11 @@ jobs:
             --signedby "iinsert <iinsertt@proton.me>" \
             repo/
 
+
       - name: Sign packages
         env:
           XBPS_PRIVATE_KEY: ${{ secrets.XBPS_PRIVATE_KEY }}
+
         run: |
           echo "$XBPS_PRIVATE_KEY" > private.pem
 
@@ -96,14 +133,18 @@ jobs:
 
           rm -f private.pem
 
-      - name: Upload GitHub Pages artifact
+
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: repo/
 
 
   deploy:
+
     needs: build
+
+    runs-on: ubuntu-latest
 
     permissions:
       pages: write
@@ -113,9 +154,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
-    runs-on: ubuntu-latest
-
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
