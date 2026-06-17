@@ -27,11 +27,11 @@ jobs:
       - name: Install dependencies
         run: |
           xbps-install -Syu xbps
-          xbps-install -Sy git openssl curl sudo
+          xbps-install -Sy git openssl curl sudo bash
 
       - name: Create build user
         run: |
-          useradd -m builder
+          useradd -m -s /bin/bash builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
 
       - name: Clone void-packages
