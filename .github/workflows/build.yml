@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: voidlinux/void-glibc-full
+      image: ghcr.io/void-linux/void-glibc-full:latest
 
     steps:
       - name: Checkout repository
