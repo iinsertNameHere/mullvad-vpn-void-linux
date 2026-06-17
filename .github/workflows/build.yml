@@ -1,3 +1,4 @@
+
 name: Build and Publish XBPS Repository
 
 on:
@@ -39,56 +40,6 @@ jobs:
         run: |
           curl -L \
             https://repo-default.voidlinux.org/static/xbps-static-latest.x86_64-musl.tar.xz \
-            -o xbps-static.tar.xz
-
-          mkdir -p "$HOME/xbps"
-
-          tar xf xbps-static.tar.xz \
-            -C "$HOME/xbps"
-
-          echo "$HOME/xbps/usr/bin" >> "$GITHUB_PATH"
-
-
-      - name: Clone void-packages
-        run: |
-          git clone --depth=1 \
-            https://github.com/void-linux/void-packages.git
-
-          test -f void-packages/xbps-src
-
-
-      - name: Add package template
-        run: |
-          cp -r \
-            srcpkgs/mullvad-vpn \
-            void-packages/srcpkgs/
-
-
-      - name: Configure xbps-src
-        run: |
-          cd void-packages
-
-          mkdir -p etc
-
-          echo "XBPS_ALLOW_RESTRICTED=yes" >> etc/conf
-          echo "XBPS_CHROOT_CMD=ethereal" >> etc/conf
-
-
-      - name: Clean previous build state
-        run: |
-          cd void-packages
-
-          ./xbps-src zap || true
-
-
-      - name: Bootstrap and build package
-        run: |
-          cd void-packages
-
-          ./xbps-src binary-bootstrap
-
-          ./xbps-src pkg mullvad-vpn
-
 
       - name: Create XBPS repository
         run: |
@@ -100,64 +51,3 @@ jobs:
 
           touch repo/.nojekyll
 
-          xbps-rindex \
-            -a \
-            repo/*.xbps
-
-
-      - name: Sign repository
-        env:
-          XBPS_PRIVATE_KEY: ${{ secrets.XBPS_PRIVATE_KEY }}
-
-        run: |
-          echo "$XBPS_PRIVATE_KEY" > private.pem
-
-          xbps-rindex \
-            --privkey private.pem \
-            --sign \
-            --signedby "iinsert <iinsertt@proton.me>" \
-            repo/
-
-          rm -f private.pem
-
-
-      - name: Sign packages
-        env:
-          XBPS_PRIVATE_KEY: ${{ secrets.XBPS_PRIVATE_KEY }}
-
-        run: |
-          echo "$XBPS_PRIVATE_KEY" > private.pem
-
-          xbps-rindex \
-            --privkey private.pem \
-            --sign-pkg \
-            repo/*.xbps
-
-          rm -f private.pem
-
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: repo/
-
-
-  deploy:
-
-    needs: build
-
-    runs-on: ubuntu-latest
-
-    permissions:
-      pages: write
-      id-token: write
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-
-      - name: Deploy GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
