@@ -32,9 +32,21 @@ jobs:
         run: |
           git clone --depth=1 https://github.com/void-linux/void-packages.git
 
+          echo "Checking clone..."
+          ls -la void-packages
+
+          test -f void-packages/xbps-src
+
       - name: Add template
         run: |
           cp -r srcpkgs/mullvad-vpn void-packages/srcpkgs/
+
+      - name: Debug workspace
+        run: |
+          pwd
+          ls -la
+          ls -la void-packages
+          find void-packages -maxdepth 1 -type f
 
       - name: Bootstrap xbps-src
         working-directory: void-packages
