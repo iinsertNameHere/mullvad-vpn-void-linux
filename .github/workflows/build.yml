@@ -47,6 +47,19 @@ jobs:
 
           echo "$HOME/xbps/usr/bin" >> "$GITHUB_PATH"
 
+      - name: Setup xbps-uchroot
+        run: |
+          sudo apt update
+          sudo apt install -y libarchive-tools
+
+          sudo mkdir -p /usr/libexec
+
+          sudo groupadd -f xbuilder
+
+          sudo chown root:xbuilder "$HOME/xbps/usr/bin/xbps-uchroot"
+          sudo chmod 4750 "$HOME/xbps/usr/bin/xbps-uchroot"
+
+          sudo usermod -aG xbuilder "$USER"
 
       - name: Clone void-packages
         run: |
@@ -72,18 +85,15 @@ jobs:
           echo "XBPS_ALLOW_RESTRICTED=yes" >> etc/conf
 
 
-      - name: Bootstrap xbps-src
+      - name: Bootstrap and build package
         run: |
+          newgrp xbuilder <<EOF
           cd void-packages
 
           ./xbps-src binary-bootstrap
 
-
-      - name: Build package
-        run: |
-          cd void-packages
-
           ./xbps-src pkg mullvad-vpn
+          EOF
 
 
       - name: Create repository
